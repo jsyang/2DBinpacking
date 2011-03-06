@@ -1,0 +1,171 @@
+<html>
+<script src=g.js></script>
+<script>
+/*******************************************************************************
+
+BIN-PACKING: GENERAL FIT DECREASING ALGORITHM
+JSYANG.CA
+12/09/2010
+	
+a little chickenscratch implementation from the tutorials at
+http://users.cs.cf.ac.uk/C.L.Mumford/heidi/BinPacking.html
+
+implemented: NFD, FFD, 
+
+*******************************************************************************/
+
+function Rect(w,h){
+	this.w=w;
+	this.h=h;
+}
+
+function Level(wLeft,h){
+	this.h=h;
+	this.wLeft=wLeft;
+	this.rects=[];
+	this.ins=function(a){
+		if(this.wLeft<a.w)	return 0;
+		if(this.h<a.h)		return 0;
+		
+		this.wLeft-=a.w;
+		this.rects.push(a);
+		
+		return 1;
+	};
+}
+
+function Bin(w,insertMethod){
+	this.w=w;
+	this.levels=[];
+	this.pack=insertMethod;
+	this.wastedSpace=function(){
+		var w=0;
+		var t=0;
+		for(var i in this.levels){
+			var l=this.levels[i];
+			w+=this.w*l.h;
+			t+=w;
+			for(var j in l.rects){
+				var r=l.rects[j];
+				w-=r.w*r.h;
+			}
+		}
+		return w/t;
+	}
+}
+
+
+// 	BIN > LEVEL > RECT
+//	all abstract objects, need not have the usual  geo-interpretation
+
+
+/*********************** DATA GENERATION, manipulation ************************/
+
+function makeRects(n,wRange,hRange){
+	var rects=[];
+	var r=Math.random;
+	var f=Math.floor;
+	
+	var wd=wRange[1]-wRange[0];
+	var hd=hRange[1]-hRange[0];
+	
+	// generate a width, a height
+	var gW=function(){ return wRange[0]+f(r()*wd); };
+	var gH=function(){ return hRange[0]+f(r()*hd); };
+	
+	while(n-->0) rects.push(new Rect(gW(),gH()));
+	
+	return rects;
+}
+
+function sortDescendingRects(a,b){ return (a.h!=b.h) ? b.h-a.h : b.w-a.w; }	// sort first by height, then if needed, by width
+
+/*************************** PACKING ALGORITHM METHODS ************************/
+
+function NFDH(a){
+	
+	// see if the insert can fit the rect in the current level
+	// since previous levels once filled, will not be revisited
+	
+	if(a.w>this.w) return 0;						// can't even fit the obj in the bin in current orientation
+	if(!this.levels.length) this.levels.push(new Level(this.w,a.h));	// no levels exist yet, make the first level		
+	
+	var topLevel=this.levels.length-1;
+	while(!this.levels[topLevel].ins(a)){					// try and fit it, but if can't fit in current level
+		this.levels.push(new Level(this.w,a.h));			// make a new level
+		topLevel=this.levels.length-1;					// update topLevel
+	}
+	
+	return this;								// success!
+	
+}
+
+function FFDH(a){
+	
+	// see if the insert can fit the rect in the lowest level
+	// if not, we move up to a level where we can fit it
+	
+	if(a.w>this.w) return 0;						// can't even fit the obj in the bin in current orientation
+	if(!this.levels.length) this.levels.push(new Level(this.w,a.h));	// no levels exist yet, make the first level		
+	
+	var pushed=false;
+	
+	for( var i=0, ll=this.levels.length ; i < ll ; i++ ){			// start from the bottom and see if it'll fit each succeeding level
+		if(pushed=this.levels[i].ins(a)) break;
+	}
+	
+	if(!pushed){
+		this.levels.push(new Level(this.w,a.h));			// make a new level
+		this.levels[ll].ins(a);						// insert rect in new level
+	}
+	
+	return this;
+	
+}
+
+/******************************* inst. execution ******************************/
+
+function runSample(method){
+
+	var rs=makeRects(100,[10,60],[10,60]).sort(sortDescendingRects);	// presort a list of 100 rects
+	var b=new Bin(300,method);						// make a bin of width 80, using the NFDH packing algorithm
+	for(var i in rs) b.pack(rs[i]);						// pack the bin with NFDH
+	
+	
+	(initTextbox()).innerText="\nTotal volume wasted:"+
+	Math.floor(b.wastedSpace()*10000)/100+"%\n"+
+	textLevels(b);
+	drawBin(b,initCanvas());						// gfx output
+	
+	bin=b;
+}
+
+
+function runAggregate(method,n){
+	var sum=0;
+	var c=0;
+	for(var j=n;j-->0;){
+		var rs=makeRects(100,[10,60],[10,60]).sort(sortDescendingRects);		// presort a list of 30 rects
+		var b=new Bin(300,method);						// make a bin of width 80, using the NFDH packing algorithm
+		for(var i in rs) b.pack(rs[i]);						// pack the bin with NFDH
+		sum+=b.wastedSpace();
+		c++;
+	}
+	return sum/c;
+}
+
+/*******************************************************************************
+
+method		wasted space %
+
+NFDH		10.175090164969883
+FFDH		9.347997548411194
+
+results:	FFDH more efficient at space filling, using 1% of more total space
+
+*******************************************************************************/
+
+var bin;
+window.onload=function(){runSample(FFDH);}
+
+</script><body></body></html>

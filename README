@@ -1,0 +1,5 @@
+2d Binpacking - Next Fit Decreasing
+Not much to say: packing algorithm is shelf-based,
+pre-sort the rectangles and use descending height,
+if you can't fit the width of the current rect onto
+the current shelf, create a new shelf.
